@@ -1,0 +1,7 @@
+server:
+  port: 6080
+
+spring:
+  application:
+    name: batch-project
+
