@@ -10,5 +10,5 @@ import java.util.Collection;
 @Repository
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
-  Collection<Object> findAllByUpdatedDate(LocalDate updatedDate);
+  Collection<UserEntity> findAllByUpdatedDate(LocalDate updatedDate);
 }
