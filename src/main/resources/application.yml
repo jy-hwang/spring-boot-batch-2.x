@@ -4,4 +4,10 @@ server:
 spring:
   application:
     name: batch-project
+  datasource:
+    driver-class-name: org.h2.Driver
+  sql:
+    init:
+      data-locations: classpath:insert_person.sql
+      schema-locations: classpath:create_person.sql
 
