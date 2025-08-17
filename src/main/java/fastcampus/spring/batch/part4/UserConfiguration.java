@@ -6,8 +6,15 @@ import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.item.ItemProcessor;
+import org.springframework.batch.item.ItemReader;
+import org.springframework.batch.item.ItemWriter;
+import org.springframework.batch.item.database.JpaPagingItemReader;
+import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import javax.persistence.EntityManagerFactory;
 
 @Configuration
 @Slf4j
@@ -15,30 +22,81 @@ public class UserConfiguration {
   private final JobBuilderFactory jobBuilderFactory;
   private final StepBuilderFactory stepBuilderFactory;
   private final UserRepository userRepository;
+  private final EntityManagerFactory entityManagerFactory;
 
   public UserConfiguration(JobBuilderFactory jobBuilderFactory,
                            StepBuilderFactory stepBuilderFactory,
-                           UserRepository userRepository) {
+                           UserRepository userRepository, EntityManagerFactory entityManagerFactory) {
     this.jobBuilderFactory = jobBuilderFactory;
     this.stepBuilderFactory = stepBuilderFactory;
     this.userRepository = userRepository;
+    this.entityManagerFactory = entityManagerFactory;
   }
 
   @Bean
-  public Job userJob() {
+  public Job userJob() throws Exception {
+
     return this.jobBuilderFactory
         .get("userJob")
         .incrementer(new RunIdIncrementer())
         .start(this.saveUserStep())
+        .next(this.userLevelUpStep())
         .build();
   }
 
   @Bean
   public Step saveUserStep() {
+
     return this.stepBuilderFactory
         .get("saveUserStep")
         .tasklet(new SaveUserTasklet(userRepository))
         .build();
   }
+
+  @Bean
+  public Step userLevelUpStep() throws Exception {
+
+    return this.stepBuilderFactory.get("userLevelUpStep")
+        .<UserEntity, UserEntity>chunk(100)
+        .reader(itemReader())
+        .processor(itemProcessor())
+        .writer(itemWriter())
+        .build();
+  }
+
+  private ItemReader<? extends UserEntity> itemReader() throws Exception {
+    JpaPagingItemReader<UserEntity> itemReader = new JpaPagingItemReaderBuilder<UserEntity>()
+        .queryString("select u from UserEntity u")
+        .entityManagerFactory(entityManagerFactory)
+        .pageSize(100)
+        .name("userItemReader")
+        .build();
+
+    itemReader.afterPropertiesSet();
+
+    return itemReader;
+  }
+
+  private ItemProcessor<? super UserEntity, ? extends UserEntity> itemProcessor() {
+
+    return user -> {
+      if (user.availableLevelUp()) {
+        return user;
+      }
+      return null;
+    };
+  }
+
+
+  private ItemWriter<? super UserEntity> itemWriter() {
+
+    return users -> {
+      users.forEach(x -> {
+        x.levelUp();
+        userRepository.save(x);
+      });
+    };
+  }
+
 }
 
