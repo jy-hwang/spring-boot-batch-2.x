@@ -1,13 +1,26 @@
 package fastcampus.spring.batch.part3;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
+import javax.persistence.*;
+
+@Entity
+@NoArgsConstructor
 @Getter
+@Table(name = "person")
 public class PersonEntity {
-  private final int id;
-  private final String name;
-  private final String age;
-  private final String address;
+
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private int id;
+  private String name;
+  private String age;
+  private String address;
+
+  public PersonEntity(String name, String age, String address) {
+    this(0, name, age, address);
+  }
 
   public PersonEntity(int id, String name, String age, String address) {
     this.id = id;
