@@ -3,6 +3,7 @@ package fastcampus.spring.batch.part3;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
@@ -73,10 +74,27 @@ public class ChunkProcessingConfiguration {
   }
 
   private Tasklet tasklet() {
+
+    List<String> items = getItems();
+
     return (contribution, chunkContext) -> {
-      List<String> items = getItems();
-      log.info("task items size : {}", items.size());
-      return RepeatStatus.FINISHED;
+      StepExecution stepExecution = contribution.getStepExecution();
+
+      int chunkSize = 10;
+      int fromIndex = stepExecution.getReadCount();
+      int toIndex = fromIndex + chunkSize;
+
+      if (fromIndex >= items.size()) {
+        return RepeatStatus.FINISHED;
+      }
+
+      List<String> subList = items.subList(fromIndex, toIndex);
+
+      log.info("task subList size : {}", subList.size());
+
+      stepExecution.setReadCount(toIndex);
+
+      return RepeatStatus.CONTINUABLE;
     };
   }
 
